@@ -15,9 +15,12 @@ const messages = {
   selector: "What is the CSS selector you want to match?",
   maxPagesToCrawl: "How many pages do you want to crawl?",
   outputFileName: "What is the name of the output file?",
+  crawlInterval: "What is the time interval (in ms) between page crawls?",
+  crawlFromLinksFile: "Do you want to crawl from a links file? (yes/no)",
+  linksFileName: "What is the name of the links file?"
 };
 
-async function handler(options: Config) {
+async function handler(options: any) {
   try {
     const {
       url,
@@ -25,10 +28,14 @@ async function handler(options: Config) {
       selector,
       maxPagesToCrawl: maxPagesToCrawlStr,
       outputFileName,
+      crawlInterval: crawlIntervalStr = "1000",
+      crawlFromLinksFile: crawlFromLinksFileStr = "no",
+      linksFileName
     } = options;
 
-    // @ts-ignore
-    const maxPagesToCrawl = parseInt(maxPagesToCrawlStr, 10);
+    const maxPagesToCrawl = parseInt(maxPagesToCrawlStr.toString(), 10);
+    const crawlInterval = parseInt(crawlIntervalStr.toString(), 10);
+    const crawlFromLinksFile = crawlFromLinksFileStr.toString().toLowerCase() === 'yes';
 
     let config: Config = {
       url,
@@ -36,47 +43,48 @@ async function handler(options: Config) {
       selector,
       maxPagesToCrawl,
       outputFileName,
+      crawlInterval,
+      crawlFromLinksFile,
+      linksFileName
     };
 
-    if (!config.url || !config.match || !config.selector) {
-      const questions = [];
+    const questions = [];
 
-      if (!config.url) {
-        questions.push({
-          type: "input",
-          name: "url",
-          message: messages.url,
-        });
-      }
-
-      if (!config.match) {
-        questions.push({
-          type: "input",
-          name: "match",
-          message: messages.match,
-        });
-      }
-
-      if (!config.selector) {
-        questions.push({
-          type: "input",
-          name: "selector",
-          message: messages.selector,
-        });
-      }
-
-      const answers = await inquirer.prompt(questions);
-
-      config = {
-        ...config,
-        ...answers,
-      };
+    if (!config.url) {
+      questions.push({
+        type: "input",
+        name: "url",
+        message: messages.url,
+      });
     }
+
+    if (!config.match) {
+      questions.push({
+        type: "input",
+        name: "match",
+        message: messages.match,
+      });
+    }
+
+    if (!config.selector) {
+      questions.push({
+        type: "input",
+        name: "selector",
+        message: messages.selector,
+      });
+    }
+
+    const answers = await inquirer.prompt(questions);
+
+    config = {
+      ...config,
+      ...answers
+    };
 
     await crawl(config);
     await write(config);
   } catch (error) {
-    console.log(error);
+    console.error(error);
   }
 }
 
@@ -86,12 +94,11 @@ program
   .option("-u, --url <string>", messages.url, "")
   .option("-m, --match <string>", messages.match, "")
   .option("-s, --selector <string>", messages.selector, "")
-  .option("-m, --maxPagesToCrawl <number>", messages.maxPagesToCrawl, "50")
-  .option(
-    "-o, --outputFileName <string>",
-    messages.outputFileName,
-    "output.json",
-  )
+  .option("-mp, --maxPagesToCrawl <number>", messages.maxPagesToCrawl, "50")
+  .option("-o, --outputFileName <string>", messages.outputFileName, "output.json")
+  .option("-ci, --crawlInterval <number>", messages.crawlInterval, "1000")
+  .option("-cf, --crawlFromLinksFile <string>", messages.crawlFromLinksFile, "no")
+  .option("-lf, --linksFileName <string>", messages.linksFileName, "links.txt")
   .action(handler);
 
 program.parse();
